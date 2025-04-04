@@ -3,22 +3,81 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover">
     <title>Clicker</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
-    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <!-- Firebase App -->
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <!-- Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-      body { padding: 0; margin: 0; overflow: hidden; background: #000; }
-      #unity-container { position: absolute; width: 100%; height: 100%; left: 0; top: 0; }
-      #unity-canvas { width: 100%; height: 100%; background: #000; }
-      #unity-loading-bar { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-      #unity-logo { width: 154px; height: 130px; background: url('TemplateData/unity-logo-dark.png') no-repeat center; }
-      #unity-progress-bar-empty { width: 141px; height: 18px; margin-top: 10px; background: url('TemplateData/progress-bar-empty-dark.png') no-repeat center; }
-      #unity-progress-bar-full { width: 0%; height: 18px; margin-top: 10px; background: url('TemplateData/progress-bar-full-dark.png') no-repeat center; }
-      #unity-warning { position: absolute; left: 50%; top: 5%; transform: translate(-50%); background: white; padding: 10px; display: none; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        position: fixed;
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        background: #000;
+      }
+      
+      #unity-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        touch-action: none;
+      }
+      
+      #unity-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: #000;
+      }
+      
+      #unity-loading-bar {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+      
+      #unity-logo {
+        width: 154px;
+        height: 130px;
+        background: url('TemplateData/unity-logo-dark.png') no-repeat center;
+      }
+      
+      #unity-progress-bar-empty {
+        width: 141px;
+        height: 18px;
+        margin-top: 10px;
+        background: url('TemplateData/progress-bar-empty-dark.png') no-repeat center;
+      }
+      
+      #unity-progress-bar-full {
+        width: 0%;
+        height: 18px;
+        margin-top: 10px;
+        background: url('TemplateData/progress-bar-full-dark.png') no-repeat center;
+      }
+      
+      #unity-warning {
+        position: absolute;
+        left: 50%;
+        top: 5%;
+        transform: translate(-50%);
+        background: white;
+        padding: 10px;
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -33,6 +92,13 @@
       <div id="unity-warning"></div>
     </div>
     <script>
+      // Telegram WebApp initialization
+      if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Расширяем на весь доступный экран
+        tg.enableClosingConfirmation(); // Добавляем подтверждение при закрытии
+      }
+
       var container = document.querySelector("#unity-container");
       var canvas = document.querySelector("#unity-canvas");
       var loadingBar = document.querySelector("#unity-loading-bar");
@@ -72,14 +138,23 @@
         showBanner: unityShowBanner,
       };
 
-      // Адаптивное масштабирование
+      // Настройка для лучшей адаптации к размеру экрана
       function resizeGame() {
+        // Устанавливаем точные размеры для canvas
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
       }
       
+      // Вызываем при загрузке и изменении размера окна
       window.addEventListener('resize', resizeGame);
+      window.addEventListener('load', resizeGame);
+      document.addEventListener('DOMContentLoaded', resizeGame);
       resizeGame();
+
+      // Предотвращаем прокрутку по умолчанию
+      document.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+      }, { passive: false });
 
       // Оптимизация для мобильных устройств
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
