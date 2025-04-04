@@ -10,7 +10,7 @@ from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, BotCommand, BotCommandScopeDefault
 
 # --- Константы ---
 BOT_TOKEN = "7647669248:AAFxNs-rHgTJAbMxhS3-eWECJZ2sd5Rzusw" # Твой токен
@@ -94,6 +94,81 @@ async def show_leaderboard_command(message: Message):
     """
     user_id = str(message.from_user.id)
     await fetch_and_show_leaderboard(message, user_id)
+
+# --- Обработчик команды /help ---
+@dp.message(Command("help"))
+async def show_help(message: Message):
+    """
+    Показывает справку по командам бота
+    """
+    help_text = (
+        "🎮 <b>Игровой бот - Справка</b>\n\n"
+        "Доступные команды:\n"
+        "/play - Запустить игру\n"
+        "/leaderboard - Показать таблицу лидеров\n"
+        "/profile - Посмотреть свой профиль\n"
+        "/help - Показать эту справку\n\n"
+        "Удачной игры! 🍀"
+    )
+    await message.answer(help_text, parse_mode=ParseMode.HTML)
+
+# --- Обработчик команды /profile ---
+@dp.message(Command("profile"))
+async def show_profile(message: Message):
+    """
+    Показывает профиль игрока с его статистикой
+    """
+    user = message.from_user
+    user_id = str(user.id)
+    user_name = user.full_name
+    
+    try:
+        # Запрашиваем данные игрока из Firebase
+        url = f"{FIREBASE_DB_URL}/scores/{user_id}.json"
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    await message.answer("Не удалось получить данные вашего профиля. Попробуйте позже.")
+                    return
+                
+                player_data = await response.json()
+                
+                if not player_data:
+                    # Игрок еще не играл
+                    profile_text = (
+                        f"👤 <b>Профиль игрока</b>\n\n"
+                        f"Имя: {html_escape.escape(user_name)}\n"
+                        f"ID: {user_id}\n\n"
+                        f"Вы еще не играли. Нажмите /play чтобы начать!"
+                    )
+                else:
+                    # Получаем данные и формируем профиль
+                    max_score = player_data.get('maxScore', 0)
+                    last_update = player_data.get('lastUpdate', 0)
+                    
+                    # Форматируем дату последней игры, если есть
+                    last_played = "Никогда"
+                    if last_update:
+                        from datetime import datetime
+                        date_obj = datetime.fromtimestamp(last_update / 1000)  # конвертируем миллисекунды в секунды
+                        last_played = date_obj.strftime('%d.%m.%Y %H:%M')
+                    
+                    profile_text = (
+                        f"👤 <b>Профиль игрока</b>\n\n"
+                        f"Имя: {html_escape.escape(player_data.get('name', user_name))}\n"
+                        f"ID: {user_id}\n\n"
+                        f"📊 <b>Статистика:</b>\n"
+                        f"Лучший результат: {max_score} очков\n"
+                        f"Последняя игра: {last_played}\n\n"
+                        f"Нажмите /play, чтобы начать новую игру!"
+                    )
+                
+                await message.answer(profile_text, parse_mode=ParseMode.HTML)
+                
+    except Exception as e:
+        logging.error(f"Ошибка при получении профиля: {e}", exc_info=True)
+        await message.answer("Ой! Не удалось получить данные профиля. Попробуйте позже.")
 
 # --- Обработчик нажатия на кнопку лидерборда ---
 @dp.callback_query(lambda c: c.data == "show_leaderboard")
@@ -268,6 +343,17 @@ async def main() -> None:
         return
 
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    
+    # Настраиваем команды меню бота
+    commands = [
+        BotCommand(command="play", description="🎮 Запустить игру"),
+        BotCommand(command="leaderboard", description="🏆 Таблица лидеров"),
+        BotCommand(command="profile", description="👤 Мой профиль"),
+        BotCommand(command="help", description="❓ Помощь")
+    ]
+    
+    await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
+    logging.info("Команды меню бота настроены")
 
     logging.info("Запуск бота...")
     await dp.start_polling(bot)
